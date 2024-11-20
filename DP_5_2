@@ -1,0 +1,60 @@
+import json
+import urllib.request
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def json_vis():
+    # Öffnet URL mit urrlib.  df = pd.read_json(url) führte zu --> ValueError: Mixing dicts with non-Series may lead to ambiguous ordering.
+    url = "https://raw.githubusercontent.com/sbrucknerh/dataprocessing_assignment2/main/suicide_rate.json"
+    response = urllib.request.urlopen(url)
+    data = json.load(response)
+
+    # Erstellt DataFrame filtert nach Age-adjusted=[10]/ Geschlecht=[13]/ Datum=[15]/ Deaths per 100k=[19]
+    df = pd.DataFrame(data["data"])[[10,13,15,19]]
+    # Neue Überschriften
+    df.columns = ["Age-adjusted","Gender", "Date", "Dp100k"]
+
+    # wandelt Date & Dp100k zu numerisch
+    df["Date"] = pd.to_numeric(df["Date"])
+    df["Dp100k"] = pd.to_numeric(df["Dp100k"])
+
+
+    # Gender wird unterteilt in Male, Female, Both und wird als Bool gespeichert
+    df["Male"] = df["Gender"] == "Male"
+    df["Female"] = df["Gender"] == "Female"
+    df["Both"] = df["Gender"] == "All persons"
+
+    # Filtert nach gültigen Geschlechtsangaben( Male, Female, Both) und benimmt nur Zeilen mit Age-adjusted 1
+    df = df[~((df["Male"] == False) & (df["Female"] == False) & (df["Both"] == False)) & (df["Age-adjusted"] == "1")].reset_index(drop=True) # & kombiniert mehrere Bedingungen in einem df. ~ ist die Verneinung
+
+    # wird nicht mehr benötigt
+    df = df.drop(["Gender", "Age-adjusted"], axis=1)
+
+    # Transformiert die Daten so, dass Date als Index verwendet wird und die Spalten die Werte von "Dp100k" für Male, Female und Both enthalten.
+    df = df.pivot(index="Date", columns=["Male", "Female", "Both"], values="Dp100k").reset_index()
+
+    # benenne und ändere Reihenfolge der Columns
+    df.columns = ["Date", "Both", "Male", "Female"]
+    df = df[["Date", "Male", "Female", "Both"]]
+    df = df.sort_values(by=["Date"], ascending=True)
+
+    # Line Plot
+    df.plot(kind = "line",
+            title ="Historical Suicide Rates in the U.S. by Gender (per 100,000 Population)",
+            x = "Date",
+            xlabel = "Year",
+            y = ["Male", "Female", "Both"],
+            ylabel="Suicides",
+            legend = ["Male", "Female", "Both"],
+            color = ["blue", "red", "orange"],
+            figsize = (10,10))
+
+    plt.tight_layout() #verschönert das Layout
+    plt.show()
+
+    # OPTIONAL
+    #print(df)
+    #df.to_json("JSON_Data_Project_5", orient="records", lines=True) # Speichert df als json
+
+
+json_vis()
